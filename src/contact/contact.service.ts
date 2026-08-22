@@ -26,12 +26,13 @@ export class ContactService {
       const resend = this.getResendClient();
       const emailData = await resend.emails.send({
         from: 'Portfolio Contact <onboarding@resend.dev>',
-        to: createContactDto.receiverEmail,
+        to: 'aftab26645@gmail.com',
        
         subject: `Portfolio Message from ${createContactDto.senderEmail} - ${Date.now()}`,
         html: getProfessionalEmailTemplate({
           senderEmail: createContactDto.senderEmail,
           message: createContactDto.message,
+          senderName:createContactDto.senderName,
         }),
       });
 

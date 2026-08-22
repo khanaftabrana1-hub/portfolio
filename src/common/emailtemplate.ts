@@ -1,15 +1,16 @@
 export interface EmailTemplateData {
-    senderEmail: string;
-    message: string;
+  senderEmail: string;
+  message: string;
+  senderName: string;
 }
 
 export const getProfessionalEmailTemplate = (data: EmailTemplateData): string => {
-    const receivedAt = new Date().toLocaleString('en-US', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    });
+  const receivedAt = new Date().toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
-    return `
+  return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -138,6 +139,13 @@ export const getProfessionalEmailTemplate = (data: EmailTemplateData): string =>
             <div class="info-row">
               <span class="label">From:</span>
               <span class="value"><a href="mailto:${data.senderEmail}">${data.senderEmail}</a></span>
+            </div>
+
+            <div class="content">
+          <div class="info-card">
+            <div class="info-row">
+              <span class="label">From:</span>
+              <span class="value"><a href="mailto:${data.senderName}">${data.senderName}</a></span>
             </div>
             <div class="info-row">
               <span class="label">Date:</span>
