@@ -7,7 +7,7 @@ import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { APP_CONFIG } from '../common/config';
 import { getProfessionalEmailTemplate } from '../common/emailtemplate';
-
+       
 @Injectable()
 export class ContactService {
   private getResendClient(): Resend {

@@ -5,6 +5,7 @@ import { typeOrmConfig } from './common/config';
 import { ContactModule } from './contact/contact.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { AppService } from './app.service';
       { isGlobal: true }
     ),
     TypeOrmModule.forRootAsync(typeOrmConfig), 
-    ContactModule,
+    ContactModule, UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
