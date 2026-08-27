@@ -17,8 +17,8 @@ export class User {
     @Column({ name: 'password_hash', nullable: true })
     passwordHash!: string;
 
-    @Column({ name: 'varify_email', nullable: true })
-    varifyEmail!: string;
+   @Column({ name: 'varify_email', type: 'boolean', default: false })
+    varifyEmail!: boolean;
 
    
     @Column({ type: 'varchar', nullable: true })

@@ -21,6 +21,7 @@ export class UsersService {
     this.resend = new Resend(APP_CONFIG.resendApiKey);
   }
 
+  
   async registerUser(userData: CreateUserDto) {
     if (!userData?.passwordHash || userData.passwordHash.length !== 6) {
       return { status: 400, message: 'Password must be exactly 6 characters long' };
@@ -33,54 +34,40 @@ export class UsersService {
     });
 
     if (userExist) {
-      return { status: 401, message: 'user email already register' };
+      return { status: 401, message: 'User email already registered' };
     }
 
+    // Hash Password
     const passwordHash = await bcrypt.hash(userData.passwordHash, 10);
-    return await this.usersRepo.save({ ...userData, passwordHash });
-  }
-
-  async login(loginData: LoginDto) {
-    const user = await this.usersRepo.findOne({
-      where: {
-        userEmail: loginData.userEmail,
-      },
-    });
-
-    if (!user) {
-      return { status: 404, message: 'user not found' };
-    }
-
-    const isValidPassword = await bcrypt.compare(loginData.passwordHash, user.passwordHash);
-
-    if (!isValidPassword) {
-      return { status: 403, message: 'invalid user password' };
-    }
-
-
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(generatedOtp, 10);
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 Minutes Expiry
 
-    await this.usersRepo.update(user.userId, {
+    await this.usersRepo.save({
+      ...userData,
+      passwordHash,
       otp: otpHash,
       otpExpiresAt,
+      isVerified: false,
     });
 
-
-    await this.resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: 'aftab26645@gmail.com',
-      subject: 'Login OTP Verification',
-      html: getOtpEmailTemplate(generatedOtp),
-    });
+    
+    try {
+      await this.resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: userData.userEmail, 
+        subject: 'Registration OTP Verification',
+        html: getOtpEmailTemplate(generatedOtp),
+      });
+    } catch (error) {
+      console.error('Resend API Error:', error);
+    }
 
     return {
-      status: 200,
-      message: 'Password verified. OTP has been sent to your email.',
+      status: 201,
+      message: 'User registered. OTP has been sent to your email address.',
     };
   }
-
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { userEmail, otp } = verifyOtpDto;
@@ -103,18 +90,51 @@ export class UsersService {
       return { status: 400, message: 'Invalid OTP code' };
     }
 
-
     await this.usersRepo.update(user.userId, {
       otp: null,
       otpExpiresAt: null,
+      varifyEmail: true,
     });
 
     return {
       status: 200,
-      message: 'OTP verified successfully. Login complete!',
+      message: 'OTP verified successfully. Your account is now active!',
       data: {
         userId: user.userId,
         userEmail: user.userEmail,
+      },
+    };
+  }
+
+  async login(loginData: LoginDto) {
+    const user = await this.usersRepo.findOne({
+      where: {
+        userEmail: loginData.userEmail,
+      },
+    });
+
+    if (!user) {
+      return { status: 404, message: 'User not found' };
+    }
+
+    if (!user.varifyEmail) {
+      return { status: 403, message: 'Please verify your OTP before logging in' };
+    }
+
+    const isValidPassword = await bcrypt.compare(loginData.passwordHash, user.passwordHash);
+
+    if (!isValidPassword) {
+      return { status: 403, message: 'Invalid user password' };
+    }
+
+    return {
+      status: 200,
+      message: 'Login successful!',
+      user: {
+        userId: user.userId,
+        userEmail: user.userEmail,
+        firstName: user.firstName,
+        lastName: user.lastName,
       },
     };
   }
