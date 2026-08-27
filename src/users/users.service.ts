@@ -21,6 +21,7 @@ export class UsersService {
     this.resend = new Resend(APP_CONFIG.resendApiKey);
   }
 
+  // 1. REGISTER USER
   async registerUser(userData: CreateUserDto) {
     if (!userData?.passwordHash || userData.passwordHash.length !== 6) {
       return { status: 400, message: 'Password must be exactly 6 characters long' };
@@ -34,12 +35,13 @@ export class UsersService {
       return { status: 401, message: 'User email already registered' };
     }
 
-  
+    // Hash Password & OTP
     const passwordHash = await bcrypt.hash(userData.passwordHash, 10);
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(generatedOtp, 10);
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); 
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+    // Save User in Database
     const savedUser = await this.usersRepo.save({
       ...userData,
       passwordHash,
@@ -48,25 +50,26 @@ export class UsersService {
       varifyEmail: false,
     });
 
-
+    // Send Email via Resend (Dynamic Subject line to avoid Gmail thread grouping)
     try {
       await this.resend.emails.send({
         from: 'onboarding@resend.dev',
         to: userData.userEmail,
-        subject: 'Registration OTP Verification',
+        subject: `Registration OTP Verification - ${Date.now()}`,
         html: getOtpEmailTemplate(generatedOtp),
       });
-    } catch (error) {
-      console.error('Resend Email Error:', error);
+    } catch (error: any) {
+      console.error('[Resend Email Error]:', error?.message || error);
     }
 
     return {
       status: 201,
-      message: 'User registered successfully in database. OTP has been sent to email.',
+      message: `User registered successfully. OTP sent to ${userData.userEmail}`,
       userId: savedUser.userId,
     };
   }
 
+  // 2. VERIFY OTP
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { userEmail, otp } = verifyOtpDto;
 
@@ -88,7 +91,6 @@ export class UsersService {
       return { status: 400, message: 'Invalid OTP code' };
     }
 
-    
     await this.usersRepo.update(user.userId, {
       otp: null,
       otpExpiresAt: null,
@@ -97,11 +99,11 @@ export class UsersService {
 
     return {
       status: 200,
-      message: 'OTP verified successfully. You can now proceed to login!',
+      message: 'OTP verified successfully. Your account is now active!',
     };
   }
 
-  
+  // 3. LOGIN
   async login(loginData: LoginDto) {
     const user = await this.usersRepo.findOne({
       where: { userEmail: loginData.userEmail },

@@ -1,11 +1,11 @@
 import { TypeOrmModuleAsyncOptions } from '@nestjs/typeorm';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 export const APP_CONFIG = {
-    port: parseInt(process.env.PORT?.toString().replace(/[^0-9]/g, '') || '3000', 10),
-    get resendApiKey() {
-        return process.env.RESEND_API_KEY;
-    },
-};
+  port: parseInt(process.env.PORT?.toString().replace(/[^0-9]/g, '') || '3000', 10),
+  resendApiKey: process.env.RESEND_API_KEY || '',
+};;
 
 export const typeOrmConfig: TypeOrmModuleAsyncOptions = {
     useFactory: () => {
