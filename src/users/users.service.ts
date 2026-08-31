@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -24,7 +24,8 @@ export class UsersService {
   // 1. REGISTER USER
   async registerUser(userData: CreateUserDto) {
     if (!userData?.passwordHash || userData.passwordHash.length !== 6) {
-      return { status: 400, message: 'Password must be exactly 6 characters long' };
+      throw new HttpException(`Password must be at least 6 characters`, HttpStatus.BAD_REQUEST)
+
     }
 
     const userExist = await this.usersRepo.findOne({
@@ -32,16 +33,15 @@ export class UsersService {
     });
 
     if (userExist) {
-      return { status: 401, message: 'User email already registered' };
+      throw new HttpException(`userEmail already exists. ${userData.userEmail}`, HttpStatus.CONFLICT)
     }
 
-    // Hash Password & OTP
+
     const passwordHash = await bcrypt.hash(userData.passwordHash, 10);
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(generatedOtp, 10);
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Save User in Database
     const savedUser = await this.usersRepo.save({
       ...userData,
       passwordHash,
@@ -50,7 +50,7 @@ export class UsersService {
       varifyEmail: false,
     });
 
-    // Send Email via Resend (Dynamic Subject line to avoid Gmail thread grouping)
+
     try {
       await this.resend.emails.send({
         from: 'onboarding@resend.dev',
@@ -62,14 +62,10 @@ export class UsersService {
       console.error('[Resend Email Error]:', error?.message || error);
     }
 
-    return {
-      status: 201,
-      message: `User registered successfully. OTP sent to ${userData.userEmail}`,
-      userId: savedUser.userId,
-    };
+
+    throw new HttpException(`User registered successfully. OTP sent to `, HttpStatus.CREATED)
   }
 
-  // 2. VERIFY OTP
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { userEmail, otp } = verifyOtpDto;
 
@@ -78,17 +74,20 @@ export class UsersService {
     });
 
     if (!user || !user.otp || !user.otpExpiresAt) {
-      return { status: 400, message: 'Invalid request or OTP not found' };
+      throw new HttpException(`user otp is invalid `, HttpStatus.BAD_REQUEST)
     }
 
     if (new Date() > user.otpExpiresAt) {
-      return { status: 400, message: 'OTP has expired' };
+      throw new HttpException(
+        'OTP has expired',
+        HttpStatus.BAD_REQUEST
+      );
     }
 
     const isOtpValid = await bcrypt.compare(otp, user.otp);
 
     if (!isOtpValid) {
-      return { status: 400, message: 'Invalid OTP code' };
+      throw new HttpException(`Invalid OTP `, HttpStatus.BAD_REQUEST)
     }
 
     await this.usersRepo.update(user.userId, {
@@ -97,41 +96,36 @@ export class UsersService {
       varifyEmail: true,
     });
 
-    return {
-      status: 200,
-      message: 'OTP verified successfully. Your account is now active!',
-    };
+    throw new HttpException(`Otp has been varified `, HttpStatus.OK)
   }
-
-  // 3. LOGIN
   async login(loginData: LoginDto) {
     const user = await this.usersRepo.findOne({
       where: { userEmail: loginData.userEmail },
     });
 
     if (!user) {
-      return { status: 404, message: 'User not found' };
+      throw new HttpException(
+        'User not found',
+        HttpStatus.NOT_FOUND
+      );
     }
 
     if (!user.varifyEmail) {
-      return { status: 403, message: 'Account not verified. Please verify your OTP first.' };
+      throw new HttpException(
+        'Email is not verified . please verify otp first',
+        HttpStatus.BAD_REQUEST
+      );
     }
 
     const isValidPassword = await bcrypt.compare(loginData.passwordHash, user.passwordHash);
 
     if (!isValidPassword) {
-      return { status: 403, message: 'Invalid password' };
+      throw new HttpException(
+        'Invalid password',
+        HttpStatus.BAD_REQUEST
+      );
     }
 
-    return {
-      status: 200,
-      message: 'Login successful!',
-      user: {
-        userId: user.userId,
-        userEmail: user.userEmail,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      },
-    };
+    return user
   }
 }

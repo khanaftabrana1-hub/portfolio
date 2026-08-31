@@ -15,8 +15,11 @@ export class UsersController {
   }
 
   @Post('login')
-  login(@Body() loginData: LoginDto) {
-    return this.usersService.login(loginData)
+  async login(@Body() loginData: LoginDto) {
+    const user = await this.usersService.login(loginData)
+    if(user){
+      return  user
+    } else{`Internal server erorr`}
   }
   @Post('verify-otp')
   verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
