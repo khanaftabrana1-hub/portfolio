@@ -1,7 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
@@ -9,20 +8,19 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
 
-  @Post('regsiter')
+  @Post('register')
   registerUser(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.registerUser(createUserDto)
+    return this.usersService.registerUser(createUserDto);
   }
 
   @Post('login')
   async login(@Body() loginData: LoginDto) {
-    const user = await this.usersService.login(loginData)
-    if(user){
-      return  user
-    } else{`Internal server erorr`}
+    return await this.usersService.login(loginData);
   }
+
   @Post('verify-otp')
   verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.usersService.verifyOtp(verifyOtpDto);
   }
+  
 }
